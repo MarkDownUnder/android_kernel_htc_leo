@@ -151,7 +151,6 @@ obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
 obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
 obj-$(CONFIG_ARCH_MSM7X27A) += dal_axi.o
 obj-$(CONFIG_MSM_RPCSERVER_HANDSET) += rpc_server_handset.o
-obj-$(CONFIG_MSM_QDSP6) += qdsp6/
 obj-$(CONFIG_MSM_QDSP6_1550) += qdsp6_1550/
 obj-$(CONFIG_MSM8X60_AUDIO) += qdsp6v2/
 obj-$(CONFIG_MSM_AUDIO_QDSP6) += qdsp6v2/
