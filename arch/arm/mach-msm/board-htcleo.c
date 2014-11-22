@@ -1442,9 +1442,6 @@ static struct platform_device *devices[] __initdata =
 	&bcm_bt_lpm_device,
 #endif
 #endif
-#ifdef CONFIG_720P_CAMERA
-    //&android_pmem_venc_device,
-#endif
 	&msm_device_uart_dm1,
 	&htcleo_rfkill,
 	&msm_device_otg,
@@ -1457,7 +1454,6 @@ static struct platform_device *devices[] __initdata =
 #ifndef CONFIG_ION_MSM
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-	&android_pmem_venc_device,
 #else
 	&ion_dev,
 #endif
@@ -1718,14 +1714,6 @@ static int __init pmem_mdp_size_setup(char *p)
 }
 early_param("pmem_mdp_size", pmem_mdp_size_setup);
 #endif
-
-static unsigned pmem_venc_size = MSM_PMEM_VENC_SIZE;
-static int __init pmem_venc_size_setup(char *p)
-{
-	pmem_venc_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_venc_size", pmem_venc_size_setup);
 
 static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
 static int __init pmem_adsp_size_setup(char *p)
