@@ -67,6 +67,7 @@
 
 #ifdef CONFIG_CPU_USE_DOMAINS
 #ifdef CONFIG_EMULATE_DOMAIN_MANAGER_V7
+struct mm_struct;
 void emulate_domain_manager_set(u32 domain);
 int emulate_domain_manager_data_abort(u32 dfsr, u32 dfar);
 int emulate_domain_manager_prefetch_abort(u32 ifsr, u32 ifar);
