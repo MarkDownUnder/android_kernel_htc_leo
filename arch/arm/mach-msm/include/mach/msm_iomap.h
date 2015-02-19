@@ -122,6 +122,9 @@
 #else
 /* Legacy single-target iomap */
 #if defined(CONFIG_ARCH_QSD8X50)
+#define MSM_SCU_BASE IOMEM(0xdeadbeef)
+#define MSM_L2CC_BASE IOMEM(0xdeadbeef)
+#define MSM_CFG_CTL_BASE IOMEM(0xdeadbeef)
 #include "msm_iomap-8x50.h"
 #elif defined(CONFIG_ARCH_MSM8X60)
 #include "msm_iomap-8x60.h"
