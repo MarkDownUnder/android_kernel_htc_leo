@@ -32,6 +32,7 @@
 #include <mach/msm_hsusb.h>
 #include <mach/usbdiag.h>
 #include <mach/rpc_hsusb.h>
+#include "irq.h"
 #include "pm.h"
 
 struct platform_device msm8x50_device_acpuclk = {
