@@ -73,7 +73,7 @@
 #include "acpuclock.h"
 #include "board-htcleo.h"
 #include "devices.h"
-#include "proc_comm.h"
+#include <mach/proc_comm.h>
 #include "dex_comm.h"
 #include "footswitch.h"
 #include "pm.h"
