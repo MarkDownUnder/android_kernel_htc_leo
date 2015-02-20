@@ -52,11 +52,7 @@
 #include <mach/htc_usb.h>
 #include <mach/msm_flashlight.h>
 #include <mach/msm_serial_hs.h>
-#ifdef CONFIG_USB_MSM_OTG_72K
 #include <mach/msm_hsusb.h>
-#else
-#include <linux/usb/msm_hsusb.h>
-#endif
 #include <mach/msm_hsusb_hw.h>
 #ifdef CONFIG_SERIAL_BCM_BT_LPM
 #include <mach/bcm_bt_lpm.h>
@@ -300,53 +296,248 @@ static struct i2c_board_info base_i2c_devices[] =
 // USB
 ///////////////////////////////////////////////////////////////////////
 
-static int htcleo_phy_init_seq[] ={0x0C, 0x31, 0x30, 0x32, 0x1D, 0x0D, 0x1D, 0x10, -1};
-
-static struct msm_otg_platform_data msm_otg_pdata = {
-	.phy_init_seq		= htcleo_phy_init_seq,
-	.mode			= USB_PERIPHERAL,
-	.otg_control		= OTG_PHY_CONTROL,
-};
-
-static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x0bb4,
-	.product_id	= 0x0c02,
-	.version	= 0x0100,
-	.product_name		= "HD2",
-	.manufacturer_name	= "HTC",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,
-	.fserial_init_string = "tty:modem,tty:autobot,tty:serial",
-	.nluns = 1,
-};
-
-static struct platform_device android_usb_device = {
-	.name	= "android_usb",
-	.id		= -1,
-	.dev		= {
-		.platform_data = &android_usb_pdata,
-	},
-};
-
-void htcleo_add_usb_devices(void)
+#if defined(CONFIG_USB_FS_HOST) || defined(CONFIG_USB_MSM_OTG_72K)
+static struct vreg *vreg_usb;
+static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
-	printk(KERN_INFO "%s rev: %d\n", __func__, system_rev);
-	android_usb_pdata.products[0].product_id =
-			android_usb_pdata.product_id;
 
-
-	/* add cdrom support in normal mode */
-	if (board_mfg_mode() == 0) {
-		android_usb_pdata.nluns = 3;
-		android_usb_pdata.cdrom_lun = 0x4;
+	switch (PHY_TYPE(phy_info)) {
+	case USB_PHY_INTEGRATED:
+		if (on)
+			msm_hsusb_vbus_powerup();
+		else
+			msm_hsusb_vbus_shutdown();
+		break;
+	case USB_PHY_SERIAL_PMIC:
+		if (on)
+			vreg_enable(vreg_usb);
+		else
+			vreg_disable(vreg_usb);
+		break;
+	default:
+		pr_err("%s: undefined phy type ( %X ) \n", __func__,
+						phy_info);
 	}
 
-	msm_device_otg.dev.platform_data = &msm_otg_pdata;
-	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
+}
+#endif 
+
+static struct msm_usb_host_platform_data msm_usb_host_pdata = {
+        .phy_info       = (USB_PHY_INTEGRATED | USB_PHY_MODEL_180NM),
+};
+static void msm_fsusb_setup_gpio(unsigned int enable);
+#ifdef CONFIG_USB_FS_HOST
+static struct msm_usb_host_platform_data msm_usb_host2_pdata = {
+        .phy_info       = USB_PHY_SERIAL_PMIC,
+        .config_gpio = msm_fsusb_setup_gpio,
+        .vbus_power = msm_hsusb_vbus_power,
+};
+#endif
+
+#ifdef CONFIG_USB_MSM_OTG_72K
+static int hsusb_rpc_connect(int connect)
+{
+	if (connect)
+		return msm_hsusb_rpc_connect();
+	else
+		return msm_hsusb_rpc_close();
+}
+
+/* TBD: 8x50 FFAs have internal 3p3 voltage regulator as opposed to
+ * external 3p3 voltage regulator on Surf platform. There is no way
+ * s/w can detect fi concerned regulator is internal or external to
+ * to MSM. Internal 3p3 regulator is powered through boost voltage
+ * regulator where as external 3p3 regulator is powered through VPH.
+ * So for internal voltage regulator it is required to power on
+ * boost voltage regulator first. Unfortunately some of the FFAs are
+ * re-worked to install external 3p3 regulator. For now, assuming all
+ * FFAs have 3p3 internal regulators and all SURFs have external 3p3
+ * regulator as there is no way s/w can determine if theregulator is
+ * internal or external. May be, we can implement this flag as kernel
+ * boot parameters so that we can change code behaviour dynamically
+ */
+static int regulator_3p3_is_internal;
+static struct vreg *vreg_5v;
+static struct vreg *vreg_3p3;
+static int msm_hsusb_ldo_init(int init)
+{
+	if (init) {
+		if (regulator_3p3_is_internal) {
+			vreg_5v = vreg_get(NULL, "boost");
+			if (IS_ERR(vreg_5v))
+				return PTR_ERR(vreg_5v);
+			vreg_set_level(vreg_5v, 5000);
+		}
+
+		vreg_3p3 = vreg_get(NULL, "usb");
+		if (IS_ERR(vreg_3p3))
+			return PTR_ERR(vreg_3p3);
+		vreg_set_level(vreg_3p3, 3300);
+	} else {
+		if (regulator_3p3_is_internal)
+			vreg_put(vreg_5v);
+		vreg_put(vreg_3p3);
+	}
+
+	return 0;
+}
+
+static int msm_hsusb_ldo_enable(int enable)
+{
+	static int ldo_status;
+	int ret;
+
+	if (ldo_status == enable)
+		return 0;
+
+	if (regulator_3p3_is_internal && (!vreg_5v || IS_ERR(vreg_5v)))
+		return -ENODEV;
+	if (!vreg_3p3 || IS_ERR(vreg_3p3))
+		return -ENODEV;
+
+	ldo_status = enable;
+
+	if (enable) {
+		if (regulator_3p3_is_internal) {
+			ret = vreg_enable(vreg_5v);
+			if (ret)
+				return ret;
+
+			/* power supply to 3p3 regulator can vary from
+			 * USB VBUS or VREG 5V. If the power supply is
+			 * USB VBUS cable disconnection cannot be
+			 * deteted. Select power supply to VREG 5V
+			 */
+			/* TBD: comeup with a better name */
+			ret = pmic_vote_3p3_pwr_sel_switch(1);
+			if (ret)
+				return ret;
+		}
+		ret = vreg_enable(vreg_3p3);
+
+		return ret;
+	} else {
+		if (regulator_3p3_is_internal) {
+			ret = vreg_disable(vreg_5v);
+			if (ret)
+				return ret;
+			ret = pmic_vote_3p3_pwr_sel_switch(0);
+			if (ret)
+				return ret;
+		}
+			ret = vreg_disable(vreg_3p3);
+
+			return ret;
+	}
+}
+
+static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
+{
+	int ret;
+
+	if (init) {
+		ret = msm_pm_app_rpc_init(callback);
+	} else {
+		msm_pm_app_rpc_deinit(callback);
+		ret = 0;
+	}
+	return ret;
+}
+
+static struct msm_otg_platform_data msm_otg_pdata = {
+        .rpc_connect    = hsusb_rpc_connect,
+        .pmic_vbus_notif_init         = msm_hsusb_pmic_notif_init,
+        .pemp_level              = PRE_EMPHASIS_WITH_10_PERCENT,
+        .cdr_autoreset           = CDR_AUTO_RESET_DEFAULT,
+        .drv_ampl                = HS_DRV_AMPLITUDE_5_PERCENT,
+        .vbus_power              = msm_hsusb_vbus_power,
+        .chg_vbus_draw           = hsusb_chg_vbus_draw,
+        .chg_connected           = hsusb_chg_connected,
+        .chg_init                = hsusb_chg_init,
+        .phy_can_powercollapse   = 1,
+        .ldo_init                = msm_hsusb_ldo_init,
+        .ldo_enable              = msm_hsusb_ldo_enable,
+};
+
+#endif
+
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata;
+
+/////////////////////////////////
+
+#ifdef CONFIG_USB_FS_HOST
+static struct msm_gpio fsusb_config[] = {
+        { GPIO_CFG(139, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "fs_dat" },
+        { GPIO_CFG(140, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "fs_se0" },
+        { GPIO_CFG(141, 3, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "fs_oe_n" },
+};
+
+static int fsusb_gpio_init(void)
+{
+        return msm_gpios_request(fsusb_config, ARRAY_SIZE(fsusb_config));
+}
+
+static void msm_fsusb_setup_gpio(unsigned int enable)
+{
+        if (enable)
+                msm_gpios_enable(fsusb_config, ARRAY_SIZE(fsusb_config));
+        else
+                msm_gpios_disable(fsusb_config, ARRAY_SIZE(fsusb_config));
+
+}
+
+static struct msm_hsusb_platform_data msm_hsusb_pdata = {
+        .phy_reset = internal_phy_reset,
+        .phy_init_seq = hsusb_phy_init_seq,
+	.phy_info       = (USB_PHY_INTEGRATED | USB_PHY_MODEL_180NM),
+	.version        = 0x0100,
+        .vendor_id          = 0x5c6,
+        .product_name       = "Qualcomm HSUSB Device",
+        .serial_number      = "1234567890ABCDEF",
+        .manufacturer_name  = "Qualcomm Incorporated",
+        .compositions   = usb_func_composition,
+        .num_compositions = ARRAY_SIZE(usb_func_composition),
+        .function_map   = usb_functions_map,
+        .num_functions  = ARRAY_SIZE(usb_functions_map),
+        .config_gpio    = NULL,
+};
+
+#endif
+static void __init qsd8x50_init_usb(void)
+{
+
+#ifdef CONFIG_USB_MSM_OTG_72K
+
+	platform_device_register(&msm_device_otg);
+#endif
+
+#ifdef CONFIG_USB_FS_HOST
+        platform_device_register(&msm_device_hsusb_peripheral);
+#endif
+
+#ifdef CONFIG_USB_MSM_72K
 	platform_device_register(&msm_device_gadget_peripheral);
-	platform_device_register(&android_usb_device);
+#endif
+
+#if defined(CONFIG_USB_FS_HOST) || defined(CONFIG_USB_MSM_OTG_72K)
+	vreg_usb = vreg_get(NULL, "boost");
+
+	if (IS_ERR(vreg_usb)) {
+		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
+		       __func__, PTR_ERR(vreg_usb));
+		return;
+	}
+#endif
+
+	platform_device_register(&msm_device_hsusb_otg);
+	msm_add_host(0, &msm_usb_host_pdata);
+
+#ifdef CONFIG_USB_FS_HOST
+        if (fsusb_gpio_init())
+                return;
+	fsusb_gpio_init();
+	msm_add_host(0, &msm_usb_host2_pdata);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////
