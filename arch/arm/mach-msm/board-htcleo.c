@@ -440,13 +440,13 @@ void config_camera_off_gpios(void)
 static struct resource msm_camera_resources[] =
 {
 	{
-		.start	= MSM_VFE_PHYS,
-		.end	= MSM_VFE_PHYS + MSM_VFE_SIZE - 1,
+		.start	= 0xA0F00000,
+		.end	= 0xA0F00000 + SZ_1M - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
 		.start	= INT_VFE,
-		 INT_VFE,
+		.end	= INT_VFE,
 		.flags	= IORESOURCE_IRQ,
 	},
 };
