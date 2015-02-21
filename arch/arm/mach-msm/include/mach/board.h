@@ -128,7 +128,6 @@ struct msm_camera_sensor_flash_led {
 
 struct msm_camera_sensor_flash_src {
 	int flash_sr_type;
-	int (*camera_flash)(int level);
 
 	union {
 		struct msm_camera_sensor_flash_pmic pmic_src;
@@ -144,15 +143,6 @@ struct msm_camera_sensor_flash_src {
 struct msm_camera_sensor_flash_data {
 	int flash_type;
 	struct msm_camera_sensor_flash_src *flash_src;
-};
-
-struct camera_flash_cfg {
-	int num_flash_levels;
-	int (*camera_flash)(int level);
-	uint16_t low_temp_limit;
-	uint16_t low_cap_limit;
-	uint8_t postpone_led_mode;
-	struct camera_flash_info *flash_info;	/* HTC linear led 20111011 */
 };
 
 struct msm_camera_sensor_strobe_flash_data {
