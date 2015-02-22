@@ -35,7 +35,6 @@
 #include <linux/akm8973.h>
 #include <../../../drivers/staging/android/timed_gpio.h>
 #include <linux/ds2746_battery.h>
-#include <linux/msm_kgsl.h>
 #include <linux/regulator/machine.h>
 #include <linux/moduleparam.h>
 
@@ -64,6 +63,7 @@
 #endif
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
+#include <mach/kgsl.h>
 
 #include <mach/board-htcleo-mac.h>
 #include <mach/board-htcleo-microp.h>
@@ -880,51 +880,48 @@ static struct platform_device qsd_device_spi = {
 
 /* start kgsl */
 static struct resource kgsl_3d0_resources[] = {
-	{
-		.name  = KGSL_3D0_REG_MEMORY,
-		.start = 0xA0000000,
-		.end = 0xA001ffff,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.name = KGSL_3D0_IRQ,
-		.start = INT_GRAPHICS,
-		.end = INT_GRAPHICS,
-		.flags = IORESOURCE_IRQ,
-	},
+        {       
+                .name  = KGSL_3D0_REG_MEMORY,
+                .start = 0xA0000000,
+                .end = 0xA001ffff,
+                .flags = IORESOURCE_MEM,
+        },
+        {       
+                .name   = KGSL_3D0_SHADER_MEMORY,
+                .start = MSM_GPU_PHYS_BASE,
+                .end = MSM_GPU_PHYS_BASE + MSM_GPU_PHYS_SIZE - 1,
+                .flags = IORESOURCE_MEM,
+        },
+        {       
+                .name = KGSL_3D0_IRQ,
+                .start = INT_GRAPHICS,
+                .end = INT_GRAPHICS,
+                .flags = IORESOURCE_IRQ,
+        },
 };
 
 static struct kgsl_device_platform_data kgsl_3d0_pdata = {
-	.pwr_data = {
-		.pwrlevel = {
-			{
-				.gpu_freq = 0,
-				.bus_freq = 128000000,
-			},
-		},
-		.init_level = 0,
-		.num_levels = 1,
-		.set_grp_async = NULL,
-		.idle_timeout = HZ/5,
-	},
-	.clk = {
-		.name = {
-			.clk = "core_clk",
-		},
-	},
-	.imem_clk_name = {
-		.clk = "iface_clk",
-	},
+        .pwrlevel = {
+                {       
+                        .gpu_freq = 0,
+                        .bus_freq = 128000000,
+                },
+        },
+        .init_level = 0,
+        .num_levels = 1,
+        .set_grp_async = NULL,
+        .idle_timeout = HZ/5,
+        .clk_map = KGSL_CLK_CORE | KGSL_CLK_MEM,
 };
 
 struct platform_device msm_kgsl_3d0 = {
-	.name = "kgsl-3d0",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
-	.resource = kgsl_3d0_resources,
-	.dev = {
-		.platform_data = &kgsl_3d0_pdata,
-	},
+        .name = "kgsl-3d0",
+        .id = 0,
+        .num_resources = ARRAY_SIZE(kgsl_3d0_resources),
+        .resource = kgsl_3d0_resources,
+        .dev = {
+                .platform_data = &kgsl_3d0_pdata,
+        },
 };
 /* end kgsl */
 
