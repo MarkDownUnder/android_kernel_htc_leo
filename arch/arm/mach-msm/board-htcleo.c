@@ -76,7 +76,7 @@
 #include "devices.h"
 #include <mach/proc_comm.h>
 #include "dex_comm.h"
-#include "footswitch.h"
+#include <mach/footswitch.h>
 #include "pm.h"
 #include "pm-boot.h"
 
