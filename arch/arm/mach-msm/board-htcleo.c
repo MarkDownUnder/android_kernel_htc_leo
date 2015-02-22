@@ -1230,11 +1230,6 @@ static struct platform_device *devices[] __initdata =
 #if !defined(CONFIG_MSM_SERIAL_DEBUGGER)
 	&msm_device_uart1,
 #endif
-#ifdef CONFIG_SERIAL_MSM_HS
-#ifdef CONFIG_SERIAL_BCM_BT_LPM
-	&bcm_bt_lpm_device,
-#endif
-#endif
 #ifdef CONFIG_720P_CAMERA
     //&android_pmem_venc_device,
 #endif
@@ -1242,6 +1237,10 @@ static struct platform_device *devices[] __initdata =
 	&htcleo_rfkill,
 	&msm_device_otg,
 //	&msm_device_gadget_peripheral,
+	&msm_bluesleep_device,
+#ifdef CONFIG_MSM_BT_POWER
+	&msm_bt_power_device,
+#endif
 	&qsd_device_spi,
 	&msm_device_dmov,
 	&msm_device_nand,
@@ -1524,13 +1523,7 @@ static void __init htcleo_init(void)
 
 	init_dex_comm();
 
-#ifdef CONFIG_SERIAL_MSM_HS
-	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
-#if 0
-	msm_device_uart_dm1.name = "msm_serial_hs_brcm"; /* for bcm */
-	msm_device_uart_dm1.resource[3].end = 6;
-#endif
-#endif
+	bt_power_init();
 
 	config_gpio_table(bt_gpio_table, ARRAY_SIZE(bt_gpio_table));
 
