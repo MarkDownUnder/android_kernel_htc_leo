@@ -887,12 +887,6 @@ static struct resource kgsl_3d0_resources[] = {
                 .flags = IORESOURCE_MEM,
         },
         {       
-                .name   = KGSL_3D0_SHADER_MEMORY,
-                .start = MSM_GPU_PHYS_BASE,
-                .end = MSM_GPU_PHYS_BASE + MSM_GPU_PHYS_SIZE - 1,
-                .flags = IORESOURCE_MEM,
-        },
-        {       
                 .name = KGSL_3D0_IRQ,
                 .start = INT_GRAPHICS,
                 .end = INT_GRAPHICS,
