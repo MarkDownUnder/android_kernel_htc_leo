@@ -37,6 +37,7 @@
 #include <linux/ds2746_battery.h>
 #include <linux/msm_kgsl.h>
 #include <linux/regulator/machine.h>
+#include <linux/moduleparam.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -512,32 +513,10 @@ module_param_string(bdaddr, bdaddr, sizeof(bdaddr), 0400);
 MODULE_PARM_DESC(bdaddr, "bluetooth address");
 /* end AOSP style interface */
 
-#ifdef CONFIG_SERIAL_MSM_HS
-static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
-	.rx_wakeup_irq = -1,
-	.inject_rx_on_wakeup = 0,
-#ifdef CONFIG_SERIAL_BCM_BT_LPM
-	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
-#endif
+static struct platform_device htcleo_rfkill = {
+	.name = "htcleo_rfkill",
+	.id = -1,
 };
-
-#ifdef CONFIG_SERIAL_BCM_BT_LPM
-static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
-	.gpio_wake = HTCLEO_GPIO_BT_CHIP_WAKE,
-	.gpio_host_wake = HTCLEO_GPIO_BT_HOST_WAKE,
-	.request_clock_off_locked = msm_hs_request_clock_off,
-	.request_clock_on_locked = msm_hs_request_clock_on_locked,
-};
-
-struct platform_device bcm_bt_lpm_device = {
-	.name = "bcm_bt_lpm",
-	.id = 0,
-	.dev = {
-		.platform_data = &bcm_bt_lpm_pdata,
-	},
-};
-#endif
-#endif
 
 static uint32_t bt_gpio_table[] = {
 	PCOM_GPIO_CFG(HTCLEO_GPIO_BT_UART1_RTS, 2, GPIO_OUTPUT,
@@ -558,11 +537,219 @@ static uint32_t bt_gpio_table[] = {
 		      GPIO_PULL_DOWN, GPIO_4MA),
 };
 
-static struct platform_device htcleo_rfkill =
-{
-	.name = "htcleo_rfkill",
-	.id = -1,
+static struct resource bluesleep_resources[] = {
+	{
+		.name	= "gpio_host_wake",
+		.start	= HTCLEO_GPIO_BT_HOST_WAKE,
+		.end	= HTCLEO_GPIO_BT_HOST_WAKE,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "gpio_ext_wake",
+		.start	= HTCLEO_GPIO_BT_CHIP_WAKE,
+		.end	= HTCLEO_GPIO_BT_CHIP_WAKE,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "host_wake",
+		.start	= MSM_GPIO_TO_INT(HTCLEO_GPIO_BT_HOST_WAKE),
+		.end	= MSM_GPIO_TO_INT(HTCLEO_GPIO_BT_HOST_WAKE),
+		.flags	= IORESOURCE_IRQ,
+	},
 };
+
+static struct platform_device msm_bluesleep_device = {
+	.name = "bluesleep",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(bluesleep_resources),
+	.resource	= bluesleep_resources,
+};
+
+#ifdef CONFIG_MSM_BT_POWER
+static struct platform_device msm_bt_power_device = {
+	.name = "bt_power",
+};
+
+enum {
+	BT_SYSRST,
+	BT_WAKE,
+	BT_HOST_WAKE,
+//	BT_VDD_IO,
+	BT_RFR,
+	BT_CTS,
+	BT_RX,
+	BT_TX,
+	BT_VDD_FREG
+};
+
+static struct msm_gpio bt_config_power_off[] = {
+	{ GPIO_CFG(HTCLEO_GPIO_BT_RESET_N, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"BT SYSRST" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_CHIP_WAKE, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"BT WAKE" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_HOST_WAKE, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"HOST WAKE" },
+//	{ GPIO_CFG(22, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+//		"BT VDD_IO" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_RTS, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"UART1DM_RFR" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_CTS, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"UART1DM_CTS" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_RX, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"UART1DM_RX" },
+	{ GPIO_CFG(46, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		"UART1DM_TX" }
+};
+
+static struct msm_gpio bt_config_power_on[] = {
+	{ GPIO_CFG(HTCLEO_GPIO_BT_RESET_N, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"BT SYSRST" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_CHIP_WAKE, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"BT WAKE" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_HOST_WAKE, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"HOST WAKE" },
+//	{ GPIO_CFG(22, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+//		"BT VDD_IO" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_RTS, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"UART1DM_RFR" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_CTS, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"UART1DM_CTS" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_RX, 2, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"UART1DM_RX" },
+	{ GPIO_CFG(HTCLEO_GPIO_BT_UART1_TX, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"UART1DM_TX" }
+};
+
+static int bluetooth_power(int on)
+{
+	int rc;
+
+	if (on) {
+		/* units of mV, steps of 50 mV */
+
+		rc = msm_gpios_enable(bt_config_power_on,
+					ARRAY_SIZE(bt_config_power_on));
+		if (rc < 0) {
+			printk(KERN_ERR
+				"%s: bt power on gpio config failed: %d\n",
+				__func__, rc);
+			return rc;
+		}
+
+/*		if (machine_is_qsd8x50_ffa()) {
+			rc = msm_gpios_enable
+					(wlan_config_power_on,
+					 ARRAY_SIZE(wlan_config_power_on));
+			if (rc < 0) {
+				printk
+				 (KERN_ERR
+				 "%s: wlan power on gpio config failed: %d\n",
+					__func__, rc);
+				return rc;
+			}
+		}*/
+
+//		gpio_set_value(22, on); /* VDD_IO */
+		gpio_set_value(HTCLEO_GPIO_BT_RESET_N, on); /* SYSRST */
+
+//		if (machine_is_qsd8x50_ffa()) {
+//			gpio_set_value(138, 0); /* WLAN: CHIP_PWD */
+//			gpio_set_value(113, on); /* WLAN */
+//		}
+//	} else {
+//		if (machine_is_qsd8x50_ffa()) {
+//			gpio_set_value(138, on); /* WLAN: CHIP_PWD */
+//			gpio_set_value(113, on); /* WLAN */
+//		}
+
+		gpio_set_value(HTCLEO_GPIO_BT_RESET_N, on); /* SYSRST */
+//		gpio_set_value(22, on); /* VDD_IO */
+
+/*		rc = vreg_disable(vreg_wlan);
+		if (rc) {
+			printk(KERN_ERR "%s: vreg wlan disable failed (%d)\n",
+					__func__, rc);
+			return -EIO;
+		}
+*/
+		rc = msm_gpios_enable(bt_config_power_off,
+					ARRAY_SIZE(bt_config_power_off));
+		if (rc < 0) {
+			printk(KERN_ERR
+				"%s: bt power off gpio config failed: %d\n",
+				__func__, rc);
+			return rc;
+		}
+/*
+		if (machine_is_qsd8x50_ffa()) {
+			rc = msm_gpios_enable
+					(wlan_config_power_off,
+					 ARRAY_SIZE(wlan_config_power_off));
+			if (rc < 0) {
+				printk
+				 (KERN_ERR
+				 "%s: wlan power off gpio config failed: %d\n",
+					__func__, rc);
+				return rc;
+			}
+		}*/
+	}
+
+	printk(KERN_DEBUG "Bluetooth power switch: %d\n", on);
+
+	return 0;
+}
+
+static void __init bt_power_init(void)
+{
+	struct vreg *vreg_bt;
+	int rc;
+
+//	if (machine_is_qsd8x50_ffa()) {
+//		gpio_set_value(138, 0); /* WLAN: CHIP_PWD */
+//		gpio_set_value(113, 0); /* WLAN */
+//	}
+
+	gpio_set_value(HTCLEO_GPIO_BT_RESET_N, 0); /* SYSRST */
+//	gpio_set_value(22, 0); /* VDD_IO */
+
+	/* do not have vreg bt defined, gp6 is the same */
+	/* vreg_get parameter 1 (struct device *) is ignored */
+	vreg_bt = vreg_get(NULL, "gp6");
+
+	if (IS_ERR(vreg_bt)) {
+		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
+		       __func__, PTR_ERR(vreg_bt));
+		goto exit;
+	}
+
+	/* units of mV, steps of 50 mV */
+	rc = vreg_set_level(vreg_bt, PMIC_VREG_GP6_LEVEL);
+	if (rc) {
+		printk(KERN_ERR "%s: vreg bt set level failed (%d)\n",
+		       __func__, rc);
+		goto exit;
+	}
+	rc = vreg_enable(vreg_bt);
+	if (rc) {
+		printk(KERN_ERR "%s: vreg bt enable failed (%d)\n",
+		       __func__, rc);
+		goto exit;
+	}
+
+	if (bluetooth_power(0))
+		goto exit;
+
+	msm_bt_power_device.dev.platform_data = &bluetooth_power;
+
+	printk(KERN_DEBUG "Bluetooth power switch: initialized\n");
+
+exit:
+	return;
+}
+#else
+#define bt_power_init(x) do {} while (0)
+#endif
 
 ///////////////////////////////////////////////////////////////////////
 // PM Platform data
