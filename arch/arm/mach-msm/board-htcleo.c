@@ -1337,29 +1337,6 @@ static void __init msm_device_i2c_init(void)
 }
 
 ///////////////////////////////////////////////////////////////////////
-// Clocks
-///////////////////////////////////////////////////////////////////////
-/*
-static struct msm_acpu_clock_platform_data htcleo_clock_data = {
-	.acpu_switch_time_us	= 20,
-	.max_speed_delta_khz	= 256000,
-	.vdd_switch_time_us	= 62,
-	.power_collapse_khz	= 128000,
-	.wait_for_irq_khz	= 128000,
-//	.wait_for_irq_khz	= 19200,   // TCXO
-};
-*/
-static unsigned htcleo_perf_acpu_table[] = {
-	245000000,
-	576000000,
-	998400000,
-};
-
-static struct perflock_platform_data htcleo_perflock_data = {
-	.perf_acpu_table = htcleo_perf_acpu_table,
-	.table_size = ARRAY_SIZE(htcleo_perf_acpu_table),
-};
-///////////////////////////////////////////////////////////////////////
 // Reset
 ///////////////////////////////////////////////////////////////////////
 
