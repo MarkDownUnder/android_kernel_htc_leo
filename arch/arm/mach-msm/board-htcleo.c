@@ -1512,8 +1512,8 @@ static void __init htcleo_init(void)
 
 	do_grp_reset();
 	do_sdc1_reset();
-	msm_clock_init(&qds8x50_clock_init_data);
-	acpuclk_init(&acpuclk_8x50_soc_data);
+	msm_clock_init(&qsd8x50_clock_init_data);
+ 	platform_device_register(&qsd8x50_device_acpuclk);
 
 	init_dex_comm();
 
