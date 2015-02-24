@@ -923,6 +923,16 @@ void __init msm_camera_register_device(void *res, uint32_t num,
 	msm_register_device(&msm_camera_device, data);
 }
 
+#define GPIO_I2C_CLK 95
+#define GPIO_I2C_DAT 96
+
+
+void msm_i2c_gpio_init(void)
+{
+	gpio_request(GPIO_I2C_CLK, "i2c_clk");
+	gpio_request(GPIO_I2C_DAT, "i2c_data");
+}
+
 static struct resource kgsl_3d0_resources[] = {
 	{
 		.name  = KGSL_3D0_REG_MEMORY,
