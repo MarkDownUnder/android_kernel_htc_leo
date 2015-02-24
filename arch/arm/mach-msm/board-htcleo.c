@@ -1553,7 +1553,7 @@ static void __init htcleo_init(void)
 // Bootfunctions
 ///////////////////////////////////////////////////////////////////////
 
-static void __init htcleo_fixup(struct machine_desc *desc, struct tag *tags,
+static void __init htcleo_fixup(struct tag *tags,
 				 char **cmdline, struct meminfo *mi)
 {
 	/* Blink the camera LED shortly to show that we're alive! */
@@ -1614,7 +1614,7 @@ MACHINE_START(HTCLEO, "htcleo")
 	.phys_io        = MSM_DEBUG_UART_PHYS,
 	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
 #endif
-	.boot_params	= (CONFIG_PHYS_OFFSET + 0x00000100),
+        .atag_offset    = 0x100,//	.boot_params	= (CONFIG_PHYS_OFFSET + 0x00000100),
 	.fixup		= htcleo_fixup,
 	.map_io		= htcleo_map_io,
     	.reserve	= qsd8x50_reserve,
