@@ -48,6 +48,8 @@
 static uint32_t microp_als_kadc;
 static int als_power_control=0;
 static DEFINE_MUTEX(capella_cm3602_lock);
+static struct wake_lock microp_i2c_wakelock;
+static struct i2c_client *private_microp_client;
 
 
 extern void p_sensor_irq_handler(void);
