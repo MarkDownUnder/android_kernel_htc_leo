@@ -30,8 +30,8 @@
 
 #include <mach/msm_iomap.h>
 #include <mach/vreg.h>
+#include <mach/proc_comm.h>
 
-#include "proc_comm.h"
 #include "board-htcleo.h"
 #include "devices.h"
 
