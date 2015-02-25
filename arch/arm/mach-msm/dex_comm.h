@@ -122,18 +122,7 @@ enum {
 		.func = (b), \
 		.drvstr = (e) \
 	}
-static void config_gpio_table(uint32_t *table, int len)
-{
-	int n, rc;
-	for (n = 0; n < len; n++) {
-		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-		if (rc) {
-			printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, table[n], rc);
-			break;
-		}
-	}
-}
+
 
 int dex_comm(unsigned cmd, unsigned *data1, unsigned *data2);
 int dex_audio(int param);
@@ -141,6 +130,3 @@ int dex_audio(int param);
 int init_dex_comm(void);
 
 #endif
-
-
-
