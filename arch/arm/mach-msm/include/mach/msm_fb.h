@@ -152,6 +152,7 @@ struct msm_lcdc_platform_data {
 
 struct mdp_blit_req;
 struct fb_info;
+struct mdp_overlay;
 struct mdp_device {
 	struct device dev;
 	void (*dma)(struct mdp_device *mdp, uint32_t addr,

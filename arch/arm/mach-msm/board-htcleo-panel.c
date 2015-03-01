@@ -13,8 +13,6 @@
 *
 */
 
-#include "../../../../drivers/video/msm/msm_fb.h"
-
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -28,6 +26,7 @@
 #include <asm/io.h>
 #include <asm/mach-types.h>
 
+#include <mach/msm_fb.h>
 #include <mach/msm_iomap.h>
 #include <mach/vreg.h>
 #include <mach/proc_comm.h>
