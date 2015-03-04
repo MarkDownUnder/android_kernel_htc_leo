@@ -1685,6 +1685,11 @@ static struct msm_fb_data htcleo_lcdc_fb_data =
 	.output_format	= MSM_MDP_OUT_IF_FMT_RGB565,
 };
 
+static struct msm_panel_common_pdata mdp_pdata = {
+	.gpio = 98,
+	.mdp_rev = MDP_REV_31,
+};
+
 static struct msm_lcdc_platform_data htcleo_lcdc_platform_data =
 {
 	.panel_ops	= &auo_lcdc_panel_ops,
