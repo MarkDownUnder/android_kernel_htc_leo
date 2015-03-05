@@ -25,7 +25,7 @@
 #include "board-htcleo.h"
 #include "devices.h"
 #include "dex_comm.h"
-#include "proc_comm.h"
+#include <mach/proc_comm.h>
 #include "pmic.h"
 
 #include <linux/proc_fs.h>
