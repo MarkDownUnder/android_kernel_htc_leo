@@ -75,6 +75,7 @@ config ARCH_QSD8X50
 	select MSM_DALRPC
 	select MSM_PM2 if PM
 	select MSM_MODEM_RESTART
+	select ARM_HAS_SG_CHAIN
 
 config ARCH_MSM8X60
 	bool "MSM8X60"
@@ -1867,6 +1868,59 @@ config MSM_SYSMON_COMM
 	  This option adds support for MSM System Monitor library, which
 	  provides an API that may be used for notifying subsystems within
 	  the SoC about other subsystems' power-up/down state-changes.
+
+config HTCLEO_ENABLE_MULTI_TOUCH
+	bool "Support for multitouch"
+	default y
+	depends on MACH_HTCLEO
+	help
+		Add multitouch support for touchscreen
+
+config HTCLEO_TOUCHSCREEN_FILTER
+	bool "Enable touchscreen filter"
+	default y
+	depends on MACH_HTCLEO
+	help
+		Enable input filtering for touchscreen
+
+choice
+	prompt "HTCLEO Keymapping"
+	default HTCLEO_KEYMAP_ANDROID
+
+	config HTCLEO_KEYMAP_ANDROID
+		bool "Keymapping for Android"
+	help
+		Optimized for the default Android GUI
+
+	config HTCLEO_KEYMAP_DPAD
+		bool "Alternative Keymapping"
+	help
+		Useful in GUIs not designed for touch-only use as this enables
+		four direction keys, alt key and enter key. Assumes landscape orientation.
+endchoice
+
+choice
+	prompt "HTCLEO Backlight API type"
+	default HTCLEO_BACKLIGHT_LED
+
+	config HTCLEO_BACKLIGHT_LED
+		bool "Backlight control via LED API"
+	help
+		Needed by Google Android
+
+	config HTCLEO_BACKLIGHT
+	select BACKLIGHT_LCD_SUPPORT
+		bool "Standard backlight API"
+	help
+		Works in standard Linux distros. Tested in GNOME.
+endchoice
+
+config HTCLEO_BTN_BACKLIGHT_MANAGER
+	depends on MACH_HTCLEO
+	default y
+	bool "Use button backlight manager"
+	help
+	  Use kernel button backlight manager to turn on/off backlight
 
 config MSM_PIL
 	bool "Peripheral image loading"
