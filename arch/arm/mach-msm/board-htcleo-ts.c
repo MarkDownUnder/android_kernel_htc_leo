@@ -250,8 +250,8 @@ static void htcleo_ts_work_func(struct work_struct *work)
 {
 	uint8_t buf[9];
 	uint32_t ptcount;
-	uint32_t ptx[2];
-	uint32_t pty[2];
+	uint32_t ptx[2] = {0, 0};
+	uint32_t pty[2] = {0, 0};
 	struct htcleo_ts_data *ts = container_of(work, struct htcleo_ts_data, work);    
 	int pressed1, pressed2;
 
