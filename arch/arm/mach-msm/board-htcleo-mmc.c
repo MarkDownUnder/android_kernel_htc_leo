@@ -147,16 +147,16 @@ static unsigned int htcleo_sdslot_status(struct device *dev)
 static struct mmc_platform_data htcleo_sdslot_data =
 {
 	.ocr_mask		= HTCLEO_MMC_VDD,
-	.mmc_bus_width  	= MMC_CAP_4_BIT_DATA,
+	.mmc_bus_width		= MMC_CAP_4_BIT_DATA,
 	.status			= htcleo_sdslot_status,
+	.status_irq		= MSM_GPIO_TO_INT(HTCLEO_GPIO_SD_STATUS),
+	.irq_flags		= IORESOURCE_IRQ_LOWEDGE | IORESOURCE_IRQ_HIGHEDGE,
 	.register_status_notify	= NULL,
 	.translate_vdd		= htcleo_sdslot_switchvdd,
 	.msmsdcc_fmin		= 144000,
 	.msmsdcc_fmid		= 25000000,
 	.msmsdcc_fmax		= 49152000,
-	.xpc_cap       		= 0,
-	.nonremovable  		= 0,
-	.uhs_caps	    	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50),
+	.nonremovable		= 0,
 };
 
 static uint32_t wifi_on_gpio_table[] =
@@ -230,9 +230,9 @@ static struct mmc_platform_data htcleo_wifi_data = {
 	.status			= htcleo_wifi_status,
 	.register_status_notify	= htcleo_wifi_status_register,
 	.embedded_sdio		= &htcleo_wifi_emb_data,
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 25000000,
-	.msmsdcc_fmax	= 49152000,
+	.msmsdcc_fmin		= 144000,
+	.msmsdcc_fmid		= 25000000,
+	.msmsdcc_fmax		= 49152000,
 };
 
 int htcleo_wifi_set_carddetect(int val)
@@ -275,8 +275,7 @@ int htcleo_wifi_reset(int on)
 	return 0;
 }
 
-int msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat,
-		 unsigned int stat_irq, unsigned long stat_irq_flags);
+extern int msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat);
 
 int __init htcleo_init_mmc(unsigned debug_uart)
 {
@@ -289,7 +288,7 @@ int __init htcleo_init_mmc(unsigned debug_uart)
 	msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, NULL);
 	gpio_set_value(HTCLEO_GPIO_WIFI_SHUTDOWN_N, 0);
 
-	msm_add_sdcc(1, &htcleo_wifi_data, 0, 0);
+	msm_add_sdcc(1, &htcleo_wifi_data);
 
 	if (debug_uart) {
 		pr_info("%s: sdcard disabled due to debug uart\n", __func__);
@@ -313,9 +312,7 @@ int __init htcleo_init_mmc(unsigned debug_uart)
 		return PTR_ERR(wlan_vreg_3);
 
 	//set_irq_wake(MSM_GPIO_TO_INT(HTCLEO_GPIO_SD_STATUS), 1);
-	msm_add_sdcc(2, &htcleo_sdslot_data,
-		      MSM_GPIO_TO_INT(HTCLEO_GPIO_SD_STATUS),
-		      IORESOURCE_IRQ_LOWEDGE | IORESOURCE_IRQ_HIGHEDGE);
+	msm_add_sdcc(2, &htcleo_sdslot_data);
 
 done:
 	printk("%s()-\n", __func__);
