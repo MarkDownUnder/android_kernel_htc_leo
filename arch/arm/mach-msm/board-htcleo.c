@@ -878,37 +878,6 @@ static struct platform_device qsd_device_spi = {
 // KGSL (HW3D support)#include <linux/android_pmem.h>
 ///////////////////////////////////////////////////////////////////////
 
-/* start kgsl */
-static struct resource kgsl_3d0_resources[] = {
-        {       
-                .name  = KGSL_3D0_REG_MEMORY,
-                .start = 0xA0000000,
-                .end = 0xA001ffff,
-                .flags = IORESOURCE_MEM,
-        },
-        {       
-                .name = KGSL_3D0_IRQ,
-                .start = INT_GRAPHICS,
-                .end = INT_GRAPHICS,
-                .flags = IORESOURCE_IRQ,
-        },
-};
-
-static struct kgsl_device_platform_data kgsl_3d0_pdata = {
-        .pwrlevel = {
-                {       
-                        .gpu_freq = 0,
-                        .bus_freq = 128000000,
-                },
-        },
-        .init_level = 0,
-        .num_levels = 1,
-        .set_grp_async = NULL,
-        .idle_timeout = HZ/5,
-        .clk_map = KGSL_CLK_CORE | KGSL_CLK_MEM,
-};
-/* end kgsl */
-
 /* start footswitch regulator */
 struct platform_device *msm_footswitch_devices[] = {
 	FS_PCOM(FS_GFX3D, "vdd", "kgsl-3d0.0"),
