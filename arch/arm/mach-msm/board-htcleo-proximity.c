@@ -25,6 +25,7 @@
 #include <mach/vreg.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
+#include <linux/module.h>
 
 #include "board-htcleo.h"
 
