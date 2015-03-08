@@ -24,10 +24,13 @@
 #include <linux/wakelock.h>
 #include <linux/leds.h>
 #include <linux/earlysuspend.h>
+#include <linux/gpio.h>
+#include <linux/module.h>
+
 #include <asm/io.h>
 #include <asm/mach-types.h>
+
 #include <mach/msm_fb.h>
-#include <linux/gpio.h>
 #include <mach/msm_iomap.h>
 #include <mach/atmega_microp.h>
 
