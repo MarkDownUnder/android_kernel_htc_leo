@@ -907,16 +907,6 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
         .idle_timeout = HZ/5,
         .clk_map = KGSL_CLK_CORE | KGSL_CLK_MEM,
 };
-
-struct platform_device msm_kgsl_3d0 = {
-        .name = "kgsl-3d0",
-        .id = 0,
-        .num_resources = ARRAY_SIZE(kgsl_3d0_resources),
-        .resource = kgsl_3d0_resources,
-        .dev = {
-                .platform_data = &kgsl_3d0_pdata,
-        },
-};
 /* end kgsl */
 
 /* start footswitch regulator */
