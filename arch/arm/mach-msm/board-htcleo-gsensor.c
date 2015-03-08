@@ -16,13 +16,16 @@
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <linux/miscdevice.h>
-#include <asm/uaccess.h>
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/bma150.h>
-#include <asm/gpio.h>
 #include <linux/earlysuspend.h>
 #include <linux/platform_device.h>
+#include <linux/module.h>
+
+#include <asm/uaccess.h>
+#include <asm/gpio.h>
+
 #include <mach/board-htcleo-microp.h>
 
 #define EARLY_SUSPEND_BMA 1
