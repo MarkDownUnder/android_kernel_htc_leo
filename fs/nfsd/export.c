@@ -494,7 +494,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
 	int err;
 	struct auth_domain *dom = NULL;
 	struct svc_export exp = {}, *expp;
-	int an_int;
+	int an_int = 0;
 
 	if (mesg[mlen-1] != '\n')
 		return -EINVAL;
