@@ -466,7 +466,7 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_o
 	uint32_t readcmd;
 
 #ifdef ENABLE_ENTRY_TRACE
-	char* oobType = "MTD_OOB_RAW";
+	char* oobType = "MTD_OPS_RAW";
 	printk("+&&&nand_readoob&&&\n");
 #endif
 
@@ -479,7 +479,7 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_o
 	cwperpage = (mtd->writesize >> 9);
 	cwdatasize = mtd->writesize/cwperpage;
 
-	if (ops->mode == MTD_OOB_AUTO)
+	if (ops->mode == MTD_OPS_AUTO_OOB)
 	{
 		cwoobsize = mtd->oobavail/cwperpage;
 		ooboffs=cwdatasize + (mtd->ecclayout->eccbytes/cwperpage); //after data and ecc
@@ -530,10 +530,10 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_o
 	}
 
 #ifdef ENABLE_ENTRY_TRACE
-	if (ops->mode == MTD_OOB_AUTO)
-		oobType = "MTD_OOB_AUTO";
-	else if (ops->mode == MTD_OOB_PLACE)
-		oobType = "MTD_OOB_PLACE";
+	if (ops->mode == MTD_OPS_AUTO_OOB)
+		oobType = "MTD_OPS_AUTO_OOB";
+	else if (ops->mode == MTD_OPS_PLACE_OOB)
+		oobType = "MTD_OPS_PLACE_OOB";
 
 	printk("msm_nand_read_oob [%08X %08X] %08X %08X %d %s\n", 
 		(uint32_t)(from), (uint32_t)ops->len, (uint32_t)ops->datbuf, 
@@ -548,7 +548,7 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_o
 	if (readoob && !readdata)
 	{
 		uint32_t maxpageoob;
-		if (ops->mode == MTD_OOB_AUTO)
+		if (ops->mode == MTD_OPS_AUTO_OOB)
 			maxpageoob=mtd->oobavail;
 		else
 			maxpageoob=mtd->oobsize;
@@ -725,7 +725,7 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from, struct mtd_oob_o
 				oob_dma_addr_curr += cmd->len;
 				page_oob_done += cmd->len;
 
-				if (ops->mode != MTD_OOB_AUTO) //seek over 2 skipped bytes in output
+				if (ops->mode != MTD_OPS_AUTO_OOB) //seek over 2 skipped bytes in output
 				{
 					int maxinc=page_oob_count-page_oob_done;
 					if (maxinc>2)
@@ -980,19 +980,78 @@ msm_nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 {
 	int ret;
 	struct mtd_oob_ops ops;
+	int (*read_oob)(struct mtd_info *, loff_t, struct mtd_oob_ops *);
 
 #ifdef ENABLE_ENTRY_TRACE
 	printk("msm_nand_read %llx %d\n", from, len);
 #endif
 
-	ops.mode = MTD_OOB_PLACE;
-	ops.len = len;
+	if (!dual_nand_ctlr_present)
+		read_oob = msm_nand_read_oob;
+	else
+		read_oob = msm_nand_read_oob_dualnandc;
+
+	ops.mode = MTD_OPS_PLACE_OOB;
 	ops.retlen = 0;
 	ops.ooblen = 0;
-	ops.datbuf = buf;
 	ops.oobbuf = NULL;
-	ret =  msm_nand_read_oob(mtd, from, &ops);
-	*retlen = ops.retlen;
+	ret = 0;
+	*retlen = 0;
+
+	if ((from & (mtd->writesize - 1)) == 0 && len == mtd->writesize) {
+		/* reading a page on page boundary */
+		ops.len = len;
+		ops.datbuf = buf;
+		ret = read_oob(mtd, from, &ops);
+		*retlen = ops.retlen;
+	} else if (len > 0) {
+		/* reading any size on any offset. partial page is supported */
+		u8 *bounce_buf;
+		loff_t aligned_from;
+		loff_t offset;
+		size_t actual_len;
+
+		bounce_buf = kmalloc(mtd->writesize, GFP_KERNEL);
+		if (!bounce_buf) {
+			pr_err("%s: could not allocate memory\n", __func__);
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		ops.len = mtd->writesize;
+		offset = from & (mtd->writesize - 1);
+		aligned_from = from - offset;
+
+		for (;;) {
+			int no_copy;
+
+			actual_len = mtd->writesize - offset;
+			if (actual_len > len)
+				actual_len = len;
+
+			no_copy = (offset == 0 && actual_len == mtd->writesize);
+			ops.datbuf = (no_copy) ? buf : bounce_buf;
+			ret = read_oob(mtd, aligned_from, &ops);
+			if (ret < 0)
+				break;
+
+			if (!no_copy)
+				memcpy(buf, bounce_buf + offset, actual_len);
+
+			len -= actual_len;
+			*retlen += actual_len;
+			if (len == 0)
+				break;
+
+			buf += actual_len;
+			offset = 0;
+			aligned_from += mtd->writesize;
+		}
+
+		kfree(bounce_buf);
+	}
+
+out:
 	return ret;
 }
 
@@ -1047,7 +1106,7 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 	dma_addr_t dummyecc_dma_addr = 0;
 
 #ifdef ENABLE_ENTRY_TRACE
-	char* oobType = "MTD_OOB_RAW";
+	char* oobType = "MTD_OPS_RAW";
 	printk("+&&&nand_writeoob&&&\n");
 #endif
 
@@ -1108,10 +1167,10 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 	}
 
 #ifdef ENABLE_ENTRY_TRACE
-	if (ops->mode == MTD_OOB_PLACE)
-		oobType = "MTD_OOB_PLACE";
-	else if (ops->mode == MTD_OOB_AUTO)
-		oobType = "MTD_OOB_AUTO";
+	if (ops->mode == MTD_OPS_PLACE_OOB)
+		oobType = "MTD_OPS_PLACE_OOB";
+	else if (ops->mode == MTD_OPS_AUTO_OOB)
+		oobType = "MTD_OPS_AUTO_OOB";
 
 	printk("msm_nand_write_oob [%08X %08X] %08X %08X %d %s\n", 
 		(uint32_t)(to), writedata?(uint32_t)ops->len:0, (uint32_t)ops->datbuf, 
@@ -1129,7 +1188,7 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 	if (writeoob && !writedata)
 	{
 		uint32_t maxpageoob;
-		if (ops->mode == MTD_OOB_AUTO)
+		if (ops->mode == MTD_OPS_AUTO_OOB)
 			maxpageoob=mtd->oobavail;
 		else
 			maxpageoob=mtd->oobsize;
@@ -1282,7 +1341,7 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 
 			if (writeoob && page_oob_done < page_oob_count) 
 			{
-				if (ops->mode != MTD_OOB_AUTO) // skip over ecc bytes in input buf
+				if (ops->mode != MTD_OPS_AUTO_OOB) // skip over ecc bytes in input buf
 				{
 					int cweccsize=mtd->ecclayout->eccbytes/cwperpage;
 					int maxinc=page_oob_count-page_oob_done;
@@ -1318,7 +1377,7 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 				oob_dma_addr_curr += cmd->len;
 				page_oob_done += cmd->len;
 
-				if (ops->mode != MTD_OOB_AUTO) // skip over bbf bytes in input buf
+				if (ops->mode != MTD_OPS_AUTO_OOB) // skip over bbf bytes in input buf
 				{
 					int maxinc=page_oob_count-page_oob_done;
 					if (maxinc>2)
@@ -1483,18 +1542,57 @@ static int msm_nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 {
 	int ret;
 	struct mtd_oob_ops ops;
+	int (*write_oob)(struct mtd_info *, loff_t, struct mtd_oob_ops *);
+
+	if (!dual_nand_ctlr_present)
+		write_oob = msm_nand_write_oob;
+	else
+		write_oob = msm_nand_write_oob_dualnandc;
 
 #ifdef ENABLE_ENTRY_TRACE
 	printk("nand_write\n");
 #endif
-	ops.mode = MTD_OOB_PLACE;
-	ops.len = len;
+	ops.mode = MTD_OPS_PLACE_OOB;
 	ops.retlen = 0;
 	ops.ooblen = 0;
-	ops.datbuf = (uint8_t *)buf;
 	ops.oobbuf = NULL;
-	ret =  msm_nand_write_oob(mtd, to, &ops);
-	*retlen = ops.retlen;
+	ret = 0;
+	*retlen = 0;
+
+	if (!virt_addr_valid(buf) &&
+	    ((to | len) & (mtd->writesize - 1)) == 0 &&
+	    ((unsigned long) buf & ~PAGE_MASK) + len > PAGE_SIZE) {
+		/*
+		 * Handle writing of large size write buffer in vmalloc
+		 * address space that does not fit in an MMU page.
+		 * The destination address must be on page boundary,
+		 * and the size must be multiple of NAND page size.
+		 * Writing partial page is not supported.
+		 */
+		ops.len = mtd->writesize;
+
+		for (;;) {
+			ops.datbuf = (uint8_t *) buf;
+
+			ret = write_oob(mtd, to, &ops);
+			if (ret < 0)
+				break;
+
+			len -= mtd->writesize;
+			*retlen += mtd->writesize;
+			if (len == 0)
+				break;
+
+			buf += mtd->writesize;
+			to += mtd->writesize;
+		}
+	} else {
+		ops.len = len;
+		ops.datbuf = (uint8_t *) buf;
+		ret = write_oob(mtd, to, &ops);
+		*retlen = ops.retlen;
+	}
+
 	return ret;
 }
 
@@ -1855,7 +1953,7 @@ void scanmac(struct mtd_info *mtd)
 		return;
 	}
 
-	ops.mode = MTD_OOB_PLACE;
+	ops.mode = MTD_OPS_PLACE_OOB;
 	ops.len = 2048;
 	ops.datbuf = iobuf;
 	ops.ooblen = 0;
@@ -1931,6 +2029,7 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		mtd->writesize = supported_flash[index].pagesize * i;
 		mtd->oobsize   = supported_flash[index].oobsize  * i;
 		mtd->erasesize = supported_flash[index].blksize  * i;
+		mtd->writebufsize = mtd->writesize;
 		mtd_writesize = mtd->writesize;
 
 		pr_info("Found a supported NAND device\n");
@@ -2014,20 +2113,20 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 	mtd->type = MTD_NANDFLASH;
 	mtd->flags = MTD_CAP_NANDFLASH;
 	/* mtd->ecctype = MTD_ECC_SW; */
-	mtd->erase = msm_nand_erase;
-	mtd->point = NULL;
-	mtd->unpoint = NULL;
-	mtd->read = msm_nand_read;
-	mtd->write = msm_nand_write;
-	mtd->read_oob = msm_nand_read_oob;
-	mtd->write_oob = msm_nand_write_oob;
+	mtd->_erase = msm_nand_erase;
+	mtd->_point = NULL;
+	mtd->_unpoint = NULL;
+	mtd->_read = msm_nand_read;
+	mtd->_write = msm_nand_write;
+	mtd->_read_oob  = msm_nand_read_oob;
+	mtd->_write_oob = msm_nand_write_oob;
 	/* mtd->sync = msm_nand_sync; */
-	mtd->lock = NULL;
+	mtd->_lock = NULL;
 	/* mtd->unlock = msm_nand_unlock; */
-	mtd->suspend = msm_nand_suspend;
-	mtd->resume = msm_nand_resume;
-	mtd->block_isbad = msm_nand_block_isbad;
-	mtd->block_markbad = msm_nand_block_markbad;
+	mtd->_suspend = msm_nand_suspend;
+	mtd->_resume = msm_nand_resume;
+	mtd->_block_isbad = msm_nand_block_isbad;
+	mtd->_block_markbad = msm_nand_block_markbad;
 	mtd->owner = THIS_MODULE;
 
 	/* Information provides to HTC SSD HW Info tool */
