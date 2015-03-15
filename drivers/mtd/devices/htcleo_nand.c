@@ -986,10 +986,7 @@ msm_nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 	printk("msm_nand_read %llx %d\n", from, len);
 #endif
 
-	if (!dual_nand_ctlr_present)
-		read_oob = msm_nand_read_oob;
-	else
-		read_oob = msm_nand_read_oob_dualnandc;
+	read_oob = msm_nand_read_oob;
 
 	ops.mode = MTD_OPS_PLACE_OOB;
 	ops.retlen = 0;
@@ -1544,10 +1541,7 @@ static int msm_nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 	struct mtd_oob_ops ops;
 	int (*write_oob)(struct mtd_info *, loff_t, struct mtd_oob_ops *);
 
-	if (!dual_nand_ctlr_present)
-		write_oob = msm_nand_write_oob;
-	else
-		write_oob = msm_nand_write_oob_dualnandc;
+	write_oob = msm_nand_write_oob;
 
 #ifdef ENABLE_ENTRY_TRACE
 	printk("nand_write\n");
