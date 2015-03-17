@@ -39,7 +39,7 @@ Original Auther:
 #include <linux/smb329.h>
 #include <mach/htc_battery.h>
 #include <asm/mach-types.h>
-#include "../../arch/arm/mach-msm/proc_comm.h"
+#include "../../arch/arm/mach-msm/include/mach/proc_comm.h"
 #include <linux/i2c.h>  					/* for i2c_adapter, i2c_client define*/
 #include <linux/time.h>
 #include <linux/rtc.h>
