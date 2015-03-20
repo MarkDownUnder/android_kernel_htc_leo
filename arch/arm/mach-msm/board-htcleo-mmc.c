@@ -152,9 +152,10 @@ static struct mmc_platform_data htcleo_sdslot_data =
 	.status			= htcleo_sdslot_status,
 	.register_status_notify	= NULL,
 	.translate_vdd		= htcleo_sdslot_switchvdd,
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 25000000,
-	.msmsdcc_fmax	= 49152000,
+	.mmc_bus_width		= MMC_CAP_4_BIT_DATA,
+	.msmsdcc_fmin		= 144000,
+	.msmsdcc_fmid		= 25000000,
+	.msmsdcc_fmax		= 49152000,
 };
 
 static uint32_t wifi_on_gpio_table[] =
@@ -230,9 +231,9 @@ static struct mmc_platform_data htcleo_wifi_data = {
 	.status			= htcleo_wifi_status,
 	.register_status_notify	= htcleo_wifi_status_register,
 	.embedded_sdio		= &htcleo_wifi_emb_data,
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 25000000,
-	.msmsdcc_fmax	= 49152000,
+	.msmsdcc_fmin		= 144000,
+	.msmsdcc_fmid		= 25000000,
+	.msmsdcc_fmax		= 49152000,
 };
 
 int htcleo_wifi_set_carddetect(int val)
