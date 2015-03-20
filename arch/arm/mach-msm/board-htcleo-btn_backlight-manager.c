@@ -22,7 +22,6 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
-#include <linux/module.h>
 
 
 static int BUTTON_BACKLIGHT_GPIO = 48;
